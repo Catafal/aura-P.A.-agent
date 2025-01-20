@@ -31,7 +31,11 @@ The Project Evaluation Agent is designed to analyze business processes and recom
 - Helps us to add then future data, and see the changes
 
 # Doc
-xxxx
+Models:
+- https://huggingface.co/unsloth/phi-4
+- https://huggingface.co/Qwen/Qwen2.5-Math-PRM-7B
+- https://huggingface.co/microsoft/phi-4
+- https://huggingface.co/softcatala/translate-cat-eng
 
 
 # Current file structure
@@ -41,9 +45,10 @@ tree -L 4 -a -I 'node_modules|.git|__pycache__|.DS_Store|.pytest_cache|.vscode'
 # Additional requirements
 - language: python
 - Langchain
-- Start using Ollama for the LLM (also implement Groq)
+- Start using HuggingFace for the LLM (also implement Groq)
 - pydantic to validate the data
 - Use the .env file to store the API keys
+- We get our data from Airtable
 
 
 
