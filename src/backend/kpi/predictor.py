@@ -121,7 +121,7 @@ class KPIPredictor:
     
     def __init__(self):
         self.llm = OllamaLLM(model="deepseek-r1:14b")
-        self.data_path = "data/synthetic_kpi_data.csv"
+        self.data_path = "/Volumes/970Evo Plus/GitHub/aura-P.A.-agent/tests/data/synthetic_kpi_data.csv"
         self.model = None
         
     def _load_synthetic_data(self, category: KPICategory) -> pd.DataFrame:
