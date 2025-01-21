@@ -77,7 +77,7 @@ class MathematicalAnalyzer:
             ValueError: If provider is not supported or API keys are missing
         """
         if provider.lower() == "ollama":
-            return OllamaLLM(model="phi4:latest")
+            return OllamaLLM(model="deepseek-r1:14b") # phi4:latest or deepseek-r1:14b
         elif provider.lower() == "groq":
             groq_api_key = os.getenv("GROQ_API_KEY")
             if not groq_api_key:

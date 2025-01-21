@@ -6,8 +6,8 @@ from langchain.schema import HumanMessage, SystemMessage
 # Add the project root directory to Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.backend.math_analysis import MathematicalAnalyzer, AnalysisInput
-from src.backend.prompt_templates import MathAnalysisPrompts
+from src.backend.model.math_analysis import MathematicalAnalyzer, AnalysisInput
+from src.backend.model.prompt_templates import MathAnalysisPrompts
 
 async def test_analyzer(verify_with_local: bool = False, company_context: dict = None):
     """

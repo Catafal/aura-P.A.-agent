@@ -29,7 +29,7 @@ class DataAnonymizer:
         for attempt in range(self.max_retries):
             try:
                 llm = OllamaLLM(
-                    model="phi4:latest",
+                    model="deepseek-r1:14b", # phi4:latest or deepseek-r1:14b
                     timeout=30  # Increase timeout
                 )
                 # Test the connection
