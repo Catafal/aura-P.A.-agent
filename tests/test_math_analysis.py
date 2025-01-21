@@ -9,9 +9,47 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.backend.math_analysis import MathematicalAnalyzer, AnalysisInput
 from src.backend.prompt_templates import MathAnalysisPrompts
 
-async def test_analyzer():
-    # Test with different providers
-    providers = ["ollama", "groq"] 
+async def test_analyzer(verify_with_local: bool = False, company_context: dict = None):
+    """
+    Test the analyzer with optional local verification
+    
+    Args:
+        verify_with_local (bool): Whether to verify Groq results with local model
+        company_context (dict): Additional company context for verification
+    """
+    providers = ["groq"]
+    
+    # Default company context if none provided
+    default_company_context = {
+        "industry": "Financial Services",
+        "company_size": "Medium Enterprise (500-1000 employees)",
+        "regulatory_requirements": ["SOX", "GDPR", "PCI-DSS"],
+        "business_priorities": {
+            "cost_reduction": 8,  # Scale 1-10
+            "quality_improvement": 9,
+            "customer_satisfaction": 9,
+            "compliance": 10
+        },
+        "department_context": {
+            "operations": {
+                "current_workload": "High",
+                "staff_expertise": "Advanced",
+                "tech_adoption_rate": "Medium"
+            },
+            "finance": {
+                "budget_constraints": "Moderate",
+                "automation_budget": "Available",
+                "risk_tolerance": "Low"
+            },
+            "customer_service": {
+                "satisfaction_score": 8.5,
+                "response_time_sla": "4 hours",
+                "team_capacity": "Stretched"
+            }
+        }
+    }
+    
+    company_context = company_context or default_company_context
     
     test_data = AnalysisInput(
         metrics={
@@ -49,7 +87,8 @@ async def test_analyzer():
                 "potential_savings": 0.6  # 60% potential reduction in process time
             }
         },
-        target_variables=["efficiency", "quality", "automation_potential", "resource_optimization"]
+        target_variables=["efficiency", "quality", "automation_potential", "resource_optimization"],
+        company_context=company_context  # Add company context to input
     )
     
     for provider in providers:
@@ -57,21 +96,37 @@ async def test_analyzer():
         try:
             analyzer = MathematicalAnalyzer(llm_provider=provider)
             
-           
-            cost_benefit_prompt = MathAnalysisPrompts.cost_benefit_prompt(test_data.metrics)
-            
-            messages = [
-                SystemMessage(content="You are a mathematical analysis assistant that provides responses in JSON format."),
-                HumanMessage(content=cost_benefit_prompt)
-            ]
-            
-            # Call the LLM with proper async handling
+            # Get initial analysis from Groq
             result = await analyzer.analyze_cost_benefit(test_data)
-            print(f"Result: {result.generations[0][0].text if hasattr(result, 'generations') else result}")
+            groq_analysis = result.generations[0][0].text if hasattr(result, 'generations') else result
+            print(f"\nGroq Analysis:")
+            print(groq_analysis)
+            print(50*"-")
+            
+            # Optional local verification with full context
+            if verify_with_local:
+                print("\nVerifying with local model (including full context)...")
+                local_analyzer = MathematicalAnalyzer(llm_provider="ollama")
+                local_result = await local_analyzer.verify_analysis(
+                    original_analysis=groq_analysis,
+                    full_data=test_data,
+                    company_context=company_context
+                )
+                print("\nLocal Verification Results:")
+                print(local_result.generations[0][0].text)
             
         except Exception as e:
             print(f"Error with {provider}: {str(e)}")
-            raise  # Re-raise to see full traceback
+            raise
 
 if __name__ == "__main__":
-    asyncio.run(test_analyzer()) 
+    # Example usage:
+    # Without local verification:
+    # asyncio.run(test_analyzer())
+    
+    # With local verification:
+    asyncio.run(test_analyzer(verify_with_local=True))
+    
+    # With custom company context:
+    # custom_context = {...}  # Define custom company context
+    # asyncio.run(test_analyzer(verify_with_local=True, company_context=custom_context)) 

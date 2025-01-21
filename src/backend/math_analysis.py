@@ -8,6 +8,7 @@ from transformers import pipeline
 from langchain_huggingface import HuggingFacePipeline
 from langchain.schema import HumanMessage, SystemMessage
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from .data_anonymizer import DataAnonymizer
 
 class ProcessActions(BaseModel):
     """Structure for process actions data"""
@@ -55,10 +56,12 @@ class MathematicalAnalyzer:
         Initialize the analyzer with specified LLM provider
         
         Args:
-            llm_provider (str): Provider name - "ollama" ors "groq"
+            llm_provider (str): Provider name - "ollama" or "groq"
         """
         load_dotenv()
         self.llm = self._initialize_llm(llm_provider)
+        # Initialize anonymizer if using Groq
+        self.anonymizer = DataAnonymizer() if llm_provider.lower() == "groq" else None
         
     def _initialize_llm(self, provider: str):
         """
@@ -83,10 +86,20 @@ class MathematicalAnalyzer:
 
     async def analyze_cost_benefit(self, data: AnalysisInput) -> Dict:
         """Analyze cost-benefit ratios using LLM with enhanced metrics"""
+        metrics_to_analyze = data.metrics
+        
+        # If using Groq, anonymize the data first
+        if isinstance(self.llm, ChatGroq):
+            try:
+                metrics_to_analyze = await self.anonymizer.anonymize_with_llm(data.metrics)
+            except Exception as e:
+                print(f"Warning: LLM anonymization failed, using basic anonymization. Error: {str(e)}")
+                metrics_to_analyze = self.anonymizer.basic_anonymize_metrics(data.metrics)
+        
         # Format the prompt for comprehensive analysis
         prompt = f"""
         Analyze the following process metrics with their detailed components:
-        - Process Metrics: {data.metrics}
+        - Process Metrics: {metrics_to_analyze}
         
         Provide a comprehensive analysis considering:
         1. Process efficiency (time and steps analysis)
@@ -130,4 +143,56 @@ class MathematicalAnalyzer:
     async def generate_composite_score(self, data: AnalysisInput) -> float:
         """Generate a composite score using weighted algorithms"""
         # Implementation for composite score calculation
-        pass 
+        pass
+
+    async def verify_analysis(self, original_analysis: str, full_data: AnalysisInput, company_context: dict) -> Dict:
+        """
+        Verify and enrich the analysis from Groq with local context
+        
+        Args:
+            original_analysis (str): The analysis from Groq
+            full_data (AnalysisInput): Complete input data
+            company_context (dict): Company-specific context
+            
+        Returns:
+            Dict: Enriched analysis with local context consideration
+        """
+        verification_prompt = f"""
+        Given this initial analysis:
+        {original_analysis}
+        
+        And this additional company context:
+        {company_context}
+        
+        And these complete process metrics:
+        {full_data.metrics}
+        
+        Please verify the analysis considering the full context and provide:
+        1. Confirmation or corrections of the initial findings
+        2. Additional insights based on company context
+        3. Modified recommendations considering:
+           - Industry-specific requirements ({company_context['industry']})
+           - Regulatory compliance needs {company_context['regulatory_requirements']}
+           - Department-specific situations
+           - Business priorities
+        
+        Format response as JSON with fields:
+        {{
+            "verification_result": {{
+                "confirmed_findings": list,
+                "corrections": list,
+                "additional_insights": list
+            }},
+            "context_specific_recommendations": list,
+            "adjusted_scores": {{
+                "efficiency_score": float,
+                "risk_score": float,
+                "compliance_impact": float,
+                "business_alignment": float
+            }},
+            "implementation_considerations": list
+        }}
+        """
+        
+        response = await self.llm.agenerate([verification_prompt])
+        return response 
