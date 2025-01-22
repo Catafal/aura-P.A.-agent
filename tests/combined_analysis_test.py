@@ -15,6 +15,7 @@ from src.backend.kpi.predictor import KPIPredictor
 from src.backend.kpi.types import KPICategory
 from src.backend.kpi.data_generator import KPIDataGenerator
 from src.backend.model.prompt_templates import MathAnalysisPrompts
+from src.backend.report_converter import process_reports
 
 async def extract_process_data_from_survey(survey_data: pd.DataFrame, process_name: str) -> Dict[str, Any]:
     """Use LLM to extract and structure process data from survey responses"""
@@ -434,6 +435,10 @@ async def main():
         print(f"\nAnalysis complete!")
         print(f"Individual process reports saved in: {reports_dir}")
         print(f"Summary report saved as: {summary_path}")
+        
+        # convert the md files to latex
+        await process_reports()
+        
         
     except Exception as e:
         print(f"Error: {str(e)}")
