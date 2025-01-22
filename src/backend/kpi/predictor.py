@@ -11,6 +11,10 @@ import pandas as pd
 import platform
 import os
 import json
+from langchain.schema import SystemMessage, HumanMessage
+import warnings
+
+warnings.filterwarnings('ignore', category=UserWarning, module='sklearn.utils.validation')
 
 class MPSAccelerationMixin:
     """Mixin to handle Apple Silicon hardware acceleration"""
@@ -116,6 +120,31 @@ Respond with ONLY a number between 0-100.
             predictions.append([pred])
         return np.array(predictions, dtype=np.float32)  # Use float32 for better performance
 
+# Add to the existing prompts
+PREDICTION_SYSTEM_PROMPT = """You are a JSON-only response generator for process improvement predictions.
+Rules:
+1. ONLY output valid JSON
+2. NO explanatory text outside the JSON
+3. NO thinking out loud
+4. NO markdown formatting
+5. Follow the exact structure below:
+
+{
+    "current_value": float,
+    "predicted_improvement": float,
+    "confidence": float,
+    "implementation_time": int,
+    "roi_estimate": float,
+    "explanation": {
+        "improvement_rationale": string,
+        "process_challenges": string,
+        "risk_factors": [{"factor": string, "mitigation": string}],
+        "resource_requirements": [string],
+        "learning_curve": string,
+        "maintenance_support": string
+    }
+}"""
+
 class KPIPredictor:
     """Predicts potential improvements from AI/automation integration"""
     
@@ -149,50 +178,82 @@ class KPIPredictor:
         )
         self.model.fit(X_scaled, y)
     
-    async def predict_improvement(self, category: KPICategory,
-                                process_analysis: ProcessAnalysis,
-                                process_steps: List[str],
-                                company_context: Dict[str, str]) -> PredictionResult:
-        """Predict improvement using both ML and LLM"""
-        
-        # Load and train on synthetic data
-        data = self._load_synthetic_data(category)
-        self._train_ml_model(data)
-        
-        # Get ML prediction
-        current_features = np.array([[0]])  # Not automated
-        future_features = np.array([[1]])   # Automated
-        
-        current_value = self.model.predict(self.scaler.transform(current_features))[0]
-        automated_value = self.model.predict(self.scaler.transform(future_features))[0]
-        
-        # Calculate improvement
-        ml_improvement = ((current_value - automated_value) / current_value) * 100
-        
-        # Get LLM prediction (using existing code)
-        llm_prediction = await self._get_llm_prediction(
-            category, process_analysis, process_steps, company_context)
-        
-        # Combine ML and LLM predictions
-        final_improvement = (ml_improvement + llm_prediction.predicted_improvement) / 2
-        
-        return PredictionResult(
-            category=category,
-            current_value=current_value,
-            predicted_improvement=final_improvement,
-            confidence=llm_prediction.confidence,
-            implementation_time=llm_prediction.implementation_time,
-            roi_estimate=llm_prediction.roi_estimate,
-            explanation=f"""
-ML-based prediction: {ml_improvement:.1f}% improvement
-(Based on {len(data)} synthetic data points)
+    async def predict_improvement(self, category: KPICategory, analysis: dict, process_steps: List[str], company_context: dict) -> dict:
+        try:
+            # Instead of using SystemMessage, we'll combine the prompts into a single string
+            system_prompt = """You are a JSON-only response generator for process improvement predictions.
+Rules:
+1. ONLY output valid JSON
+2. NO explanatory text outside the JSON
+3. NO thinking out loud
+4. NO markdown formatting
+5. Follow the exact structure below:
 
-LLM-based prediction: {llm_prediction.predicted_improvement:.1f}% improvement
-{llm_prediction.explanation}
+{
+    "current_value": float,
+    "predicted_improvement": float,
+    "confidence": float,
+    "implementation_time": int,
+    "roi_estimate": float,
+    "explanation": {
+        "improvement_rationale": string,
+        "process_challenges": string,
+        "risk_factors": [{"factor": string, "mitigation": string}],
+        "resource_requirements": [string],
+        "learning_curve": string,
+        "maintenance_support": string
+    }
+}"""
 
-Final prediction combines both ML and LLM insights for increased reliability.
-"""
-        )
+            human_prompt = f"""Based on the following process information, generate a prediction for {category.value}:
+Process Steps: {process_steps}
+Analysis Results: {analysis}
+Company Context: {company_context}
+
+Remember: Output ONLY valid JSON following the specified structure."""
+
+            full_prompt = f"{system_prompt}\n\n{human_prompt}"
+            
+            # Get prediction from LLM
+            response = await self.llm.agenerate([full_prompt])
+            prediction_text = response.generations[0][0].text.strip()
+            
+            # Parse JSON response
+            import json
+            try:
+                # Clean up the response to find JSON
+                import re
+                json_match = re.search(r'\{[\s\S]*\}', prediction_text)
+                if json_match:
+                    prediction = json.loads(json_match.group())
+                    prediction['category'] = category.value
+                    return prediction
+                else:
+                    raise ValueError("No JSON found in response")
+                    
+            except json.JSONDecodeError as e:
+                print(f"Failed to parse prediction. Raw response: {prediction_text}")
+                raise
+                
+        except Exception as e:
+            print(f"Prediction failed: {str(e)}")
+            # Return a fallback prediction instead of raising
+            return {
+                "category": category.value,
+                "current_value": 0.0,
+                "predicted_improvement": 0.0,
+                "confidence": 0.0,
+                "implementation_time": 0,
+                "roi_estimate": 0.0,
+                "explanation": {
+                    "improvement_rationale": f"Failed to generate prediction: {str(e)}",
+                    "process_challenges": "Unknown",
+                    "risk_factors": [{"factor": "Analysis failed", "mitigation": "Retry analysis"}],
+                    "resource_requirements": ["Unknown"],
+                    "learning_curve": "Unknown",
+                    "maintenance_support": "Unknown"
+                }
+            }
 
     def _format_steps(self, steps: List[str]) -> str:
         """Format process steps for prompt"""
@@ -259,117 +320,4 @@ DO NOT include any other text, ONLY the JSON object."""
                 raise ValueError("No JSON structure found in response")
         except json.JSONDecodeError as e:
             print(f"Raw response: {response}")
-            raise ValueError(f"Failed to parse response as JSON: {e}")
-
-    async def _get_llm_prediction(self, category: KPICategory,
-                                process_analysis: ProcessAnalysis,
-                                process_steps: List[str],
-                                company_context: Dict[str, str]) -> PredictionResult:
-        """Get LLM prediction for a given process"""
-        
-        prompt = f"""You are an expert AI/automation consultant with 10 years of experience. Analyze this process and provide a detailed improvement prediction.
-
-Category: {category.value}
-Process Steps:
-{self._format_steps(process_steps)}
-
-Analysis Results:
-- Automation Potential: {process_analysis.automation_potential}
-- Process Complexity: {process_analysis.complexity_score}
-- AI Applicability: {process_analysis.ai_applicability}
-- Bottlenecks: {', '.join(process_analysis.bottlenecks)}
-
-Current Metrics:
-{json.dumps(process_analysis.current_metrics, indent=2)}
-
-Company Context:
-{self._format_context(company_context)}
-
-Provide a detailed analysis in JSON format considering:
-1. Industry benchmarks and similar case studies
-2. Technical feasibility and implementation complexity
-3. Company's current automation maturity
-4. Process-specific challenges and opportunities
-5. Risk factors and mitigation strategies
-6. Resource requirements and constraints
-7. Expected learning curve and adoption timeline
-8. Maintenance and support considerations
-
-Respond with ONLY this JSON structure:
-{{
-    "current_value": 45.5,           // Current metric baseline
-    "predicted_improvement": 35.0,    // Expected percentage improvement
-    "confidence": 0.85,              // Confidence in prediction
-    "implementation_time": 12,        // Weeks needed
-    "roi_estimate": 150.0,           // ROI percentage
-    "explanation": {{
-        "improvement_rationale": "Detailed explanation of why this improvement is achievable...",
-        "technical_analysis": "Analysis of technical implementation aspects...",
-        "risk_assessment": "Key risks and mitigation strategies...",
-        "implementation_phases": [
-            "Phase 1: Initial setup and integration (2 weeks)",
-            "Phase 2: Process automation development (4 weeks)",
-            "Phase 3: Testing and validation (3 weeks)",
-            "Phase 4: Training and rollout (3 weeks)"
-        ],
-        "success_factors": [
-            "Key factor 1 with explanation",
-            "Key factor 2 with explanation"
-        ],
-        "roi_breakdown": {{
-            "cost_components": ["Implementation costs", "Training costs", "Maintenance costs"],
-            "benefit_components": ["Time savings", "Error reduction", "Resource optimization"],
-            "payback_period": "X months based on..."
-        }}
-    }}
-}}
-
-Ensure all predictions are well-justified and based on:
-- Historical data patterns
-- Industry benchmarks
-- Technical feasibility
-- Company context
-- Process complexity
-DO NOT include any other text, ONLY the JSON object."""
-
-        # Get LLM response
-        response = await self.llm.ainvoke(prompt)
-        
-        try:
-            prediction = self._extract_json_from_response(response)
-            
-            # Format detailed explanation from the structured data
-            detailed_explanation = f"""
-Improvement Analysis:
-{prediction['explanation']['improvement_rationale']}
-
-Technical Implementation:
-{prediction['explanation']['technical_analysis']}
-
-Risk Assessment:
-{prediction['explanation']['risk_assessment']}
-
-Implementation Plan:
-{chr(10).join(f"- {phase}" for phase in prediction['explanation']['implementation_phases'])}
-
-Critical Success Factors:
-{chr(10).join(f"- {factor}" for factor in prediction['explanation']['success_factors'])}
-
-ROI Analysis:
-- Costs: {', '.join(prediction['explanation']['roi_breakdown']['cost_components'])}
-- Benefits: {', '.join(prediction['explanation']['roi_breakdown']['benefit_components'])}
-- Payback Period: {prediction['explanation']['roi_breakdown']['payback_period']}
-"""
-
-            return PredictionResult(
-                category=category,
-                current_value=prediction["current_value"],
-                predicted_improvement=prediction["predicted_improvement"],
-                confidence=prediction["confidence"],
-                implementation_time=prediction["implementation_time"],
-                roi_estimate=prediction["roi_estimate"],
-                explanation=detailed_explanation
-            )
-        except Exception as e:
-            print(f"Failed to process prediction. Raw response: {response}")
-            raise ValueError(f"Prediction failed: {str(e)}") 
+            raise ValueError(f"Failed to parse response as JSON: {e}") 

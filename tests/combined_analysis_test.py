@@ -177,145 +177,263 @@ async def run_math_analysis_test(survey_data: pd.DataFrame, process_name: str, v
 
 async def run_example_test(survey_data: pd.DataFrame, process_name: str):
     """Run the example test using survey data"""
-    if not os.path.exists("tests/data/synthetic_kpi_data.csv"):
+    if not os.path.exists("/Volumes/970Evo Plus/GitHub/aura-P.A.-agent/tests/data/synthetic_kpi_data.csv"):
         data_generator = KPIDataGenerator()
         await data_generator.generate_and_save_data()
     
-    data = pd.read_csv("tests/data/synthetic_kpi_data.csv")
+    data = pd.read_csv("/Volumes/970Evo Plus/GitHub/aura-P.A.-agent/tests/data/synthetic_kpi_data.csv")
     predictor = KPIPredictor()
     
     # Extract process data from survey
     process_data = await extract_process_data_from_survey(survey_data, process_name)
     
-    analysis = await predictor.analyze_process(
-        process_steps=process_data['process_steps'],
-        company_context=process_data['company_context']
-    )
-    
-    categories = [
-        KPICategory.TIME_REDUCTION,
-        KPICategory.COST_SAVINGS,
-        KPICategory.ERROR_REDUCTION
-    ]
-    
-    predictions = []
-    for category in categories:
-        prediction = await predictor.predict_improvement(
-            category, analysis, process_data['process_steps'], process_data['company_context']
+    try:
+        analysis = await predictor.analyze_process(
+            process_steps=process_data['process_steps'],
+            company_context=process_data['company_context']
         )
-        predictions.append(prediction)
-    
-    return {
-        "process_data": process_data,
-        "analysis": analysis,
-        "predictions": predictions
-    }
+        
+        categories = [
+            KPICategory.TIME_REDUCTION,
+            KPICategory.COST_SAVINGS,
+            KPICategory.ERROR_REDUCTION
+        ]
+        
+        predictions = []
+        for category in categories:
+            try:
+                prediction = await predictor.predict_improvement(
+                    category, analysis, process_data['process_steps'], process_data['company_context']
+                )
+                
+                # Extract JSON from LLM response if needed
+                if isinstance(prediction, str):
+                    import json
+                    import re
+                    
+                    # Find JSON pattern in the response
+                    json_match = re.search(r'\{[\s\S]*\}', prediction)
+                    if json_match:
+                        try:
+                            prediction = json.loads(json_match.group())
+                        except json.JSONDecodeError:
+                            print(f"Warning: Could not parse JSON from response for {category}")
+                            continue
+                
+                # Clean up the prediction response
+                if hasattr(prediction, 'model_dump'):
+                    prediction = prediction.model_dump()
+                
+                predictions.append(prediction)
+                
+            except Exception as e:
+                print(f"Warning: Failed to generate prediction for {category}: {str(e)}")
+                # Add a placeholder prediction
+                predictions.append({
+                    "category": category.value,
+                    "current_value": 0.0,
+                    "predicted_improvement": 0.0,
+                    "confidence": 0.0,
+                    "implementation_time": 0,
+                    "roi_estimate": 0.0,
+                    "explanation": f"Failed to generate prediction: {str(e)}"
+                })
+        
+        return {
+            "process_data": process_data,
+            "analysis": analysis,
+            "predictions": predictions
+        }
+    except Exception as e:
+        print(f"Warning: Analysis failed for process '{process_name}': {str(e)}")
+        return {
+            "process_data": process_data,
+            "analysis": {
+                "automation_potential": 0.0,
+                "ai_applicability": 0.0,
+                "complexity_score": 0.0
+            },
+            "predictions": []
+        }
 
 def save_combined_report(math_results: dict, example_results: dict, output_path: str = "reports/combined_analysis.md"):
     """Save combined analysis results to a markdown file"""
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    content = f"""# Combined Process Analysis Report
+    try:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        content = f"""# Combined Process Analysis Report
 Generated on: {timestamp}
 
 ## Process Information
 ### Process Overview
-{math_results['process_data']['process_context'].get('description', '')}
+{math_results.get('process_data', {}).get('process_context', {}).get('description', 'No description available')}
 
 ### Process Steps:
-{chr(10).join(f'1. {step}' for step in math_results['process_data']['process_steps'])}
+{chr(10).join(f'1. {step}' for step in math_results.get('process_data', {}).get('process_steps', ['No steps available']))}
 
 ### Current Systems:
-{math_results['process_data']['process_context'].get('systems', 'No systems information available')}
+{chr(10).join(str(system) for system in math_results.get('process_data', {}).get('process_context', {}).get('systems', ['No systems information available']))}
 
 ### Main Challenges:
-{math_results['process_data']['process_context'].get('challenges', 'No challenges information available')}
+{chr(10).join(str(challenge) for challenge in math_results.get('process_data', {}).get('process_context', {}).get('challenges', ['No challenges information available']))}
 
 ## Part 1: Mathematical Analysis Results
 ### Current Metrics:
-{chr(10).join(f'- **{k}**: {v}' for k, v in math_results['process_data']['metrics'].items())}
+"""
+        # Safely handle metrics
+        metrics = math_results.get('process_data', {}).get('metrics', {})
+        for k, v in metrics.items():
+            if isinstance(v, (dict, list)):
+                content += f"- **{k}**: {str(v)}\n"
+            else:
+                content += f"- **{k}**: {v}\n"
 
+        content += f"""
 ### Primary Analysis:
-{math_results['primary_analysis']}
+{math_results.get('primary_analysis', 'No primary analysis available')}
 
-{f'''### Verification Analysis:
-{math_results.get('verification_analysis', 'No verification analysis performed')}''' if 'verification_analysis' in math_results else ''}
+"""
+        if 'verification_analysis' in math_results:
+            content += f"""### Verification Analysis:
+{math_results['verification_analysis']}
 
-## Part 2: KPI Prediction Results
+"""
+
+        content += """## Part 2: KPI Prediction Results
 ### Company Context:
-{chr(10).join(f'- **{k}**: {v}' for k, v in example_results['process_data']['company_context'].items())}
+"""
+        # Safely handle company context
+        company_context = example_results.get('process_data', {}).get('company_context', {})
+        for k, v in company_context.items():
+            content += f"- **{k}**: {str(v)}\n"
 
+        # Safely handle analysis results
+        analysis = example_results.get('analysis', {})
+        content += f"""
 ### Analysis Results:
-- **Automation Potential**: {example_results['analysis'].automation_potential:.2f}
-- **AI Applicability**: {example_results['analysis'].ai_applicability:.2f}
-- **Process Complexity**: {example_results['analysis'].complexity_score:.2f}
+- **Automation Potential**: {getattr(analysis, 'automation_potential', 0.0):.2f}
+- **AI Applicability**: {getattr(analysis, 'ai_applicability', 0.0):.2f}
+- **Process Complexity**: {getattr(analysis, 'complexity_score', 0.0):.2f}
 
 ### KPI Predictions:
 """
-    
-    for pred in example_results['predictions']:
-        content += f"""#### {pred.category.value.replace('_', ' ').title()}
-- **Current Value**: {pred.current_value:.2f}
-- **Predicted Improvement**: {pred.predicted_improvement:.1f}%
-- **ROI Estimate**: {pred.roi_estimate:.1f}%
-- **Implementation Time**: {pred.implementation_time} weeks
-- **Confidence Score**: {pred.confidence:.2f}
+        
+        # Safely handle predictions
+        for pred in example_results.get('predictions', []):
+            if isinstance(pred, dict):
+                content += f"""#### {pred.get('category', 'Unknown').replace('_', ' ').title()}
+- **Current Value**: {pred.get('current_value', 0.0):.2f}
+- **Predicted Improvement**: {pred.get('predicted_improvement', 0.0):.1f}%
+- **ROI Estimate**: {pred.get('roi_estimate', 0.0):.1f}%
+- **Implementation Time**: {pred.get('implementation_time', 0)} weeks
+- **Confidence Score**: {pred.get('confidence', 0.0):.2f}
 
 **Detailed Analysis**:
-{pred.explanation}
+{pred.get('explanation', 'No explanation available')}
 
 ---
 
 """
 
-    # Add appendix with raw data
-    content += """
-## Appendix: Raw Data Analysis
-### Survey Data Metrics:
-```python
-"""
-    content += str(math_results['process_data']['metrics'])
-    content += """
-```
+        # Create reports directory if it doesn't exist
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        
+        with open(output_path, "w", encoding='utf-8') as f:
+            f.write(content)
+        
+        print(f"\nCombined analysis report saved to: {output_path}")
+        
+    except Exception as e:
+        print(f"Error saving report: {str(e)}")
+        # Create a minimal valid report
+        with open(output_path, "w", encoding='utf-8') as f:
+            f.write(f"""# Combined Process Analysis Report
+Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
-### Process Context:
-```python
-"""
-    content += str(math_results['process_data']['process_context'])
-    content += """
-```
+Error generating full report: {str(e)}
 
-### Company Context:
-```python
-"""
-    content += str(math_results['process_data']['company_context'])
-    content += """
-```
-"""
-    
-    # Create reports directory if it doesn't exist
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    
-    with open(output_path, "w") as f:
-        f.write(content)
-    
-    print(f"\nCombined analysis report saved to: {output_path}")
+## Basic Process Information
+Process name: {math_results.get('process_data', {}).get('process_steps', ['Unknown'])[0]}
+""")
 
 async def main():
     try:
         # Load survey data
-        survey_data = pd.read_csv("tests/data/law-firm-survey.csv")
-        process_name = "Legal Document Review"  # We can analyze any process from the survey
+        survey_data = pd.read_csv("/Volumes/970Evo Plus/GitHub/aura-P.A.-agent/tests/data/law-firm-survey.csv")
         
-        print(f"\nAnalyzing process: {process_name}")
-        print("\nRunning Mathematical Analysis Test...")
-        math_results = await run_math_analysis_test(survey_data, process_name, verify_with_local=True)
+        print("\nAnalyzing all processes from survey...")
         
-        print("\nRunning Example Test...")
-        example_results = await run_example_test(survey_data, process_name)
+        # Get unique process names from survey
+        process_names = survey_data['process_name'].unique()
         
-        print("\nGenerating Combined Report...")
-        save_combined_report(math_results, example_results)
+        # Create directory for individual reports
+        reports_dir = "reports/process_analysis"
+        os.makedirs(reports_dir, exist_ok=True)
+        
+        # Create a summary report
+        summary_content = "# Process Analysis Summary Report\n\n"
+        summary_content += f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        summary_content += f"Total Processes Analyzed: {len(process_names)}\n\n"
+        
+        # Analyze each process
+        for process_name in process_names:
+            print(f"\nAnalyzing process: {process_name}")
+            
+            try:
+                print("Running Mathematical Analysis Test...")
+                math_results = await run_math_analysis_test(survey_data, process_name, verify_with_local=True)
+                
+                print("Running Example Test...")
+                example_results = await run_example_test(survey_data, process_name)
+                
+                print("Generating Process Report...")
+                # Save individual process report
+                report_path = os.path.join(reports_dir, f"{process_name.lower().replace(' ', '_')}_analysis.md")
+                save_combined_report(math_results, example_results, output_path=report_path)
+                
+                # Add to summary - safely handle different object types
+                summary_content += f"## {process_name}\n"
+                
+                # Safely access analysis attributes
+                analysis = example_results.get('analysis', {})
+                automation_potential = getattr(analysis, 'automation_potential', 0.0) if hasattr(analysis, 'automation_potential') else analysis.get('automation_potential', 0.0)
+                ai_applicability = getattr(analysis, 'ai_applicability', 0.0) if hasattr(analysis, 'ai_applicability') else analysis.get('ai_applicability', 0.0)
+                complexity_score = getattr(analysis, 'complexity_score', 0.0) if hasattr(analysis, 'complexity_score') else analysis.get('complexity_score', 0.0)
+                
+                summary_content += f"- Automation Potential: {automation_potential:.2f}\n"
+                summary_content += f"- AI Applicability: {ai_applicability:.2f}\n"
+                summary_content += f"- Process Complexity: {complexity_score:.2f}\n"
+                
+                # Add KPI predictions summary - handle both dict and object types
+                summary_content += "### Key Predictions:\n"
+                for pred in example_results.get('predictions', []):
+                    if isinstance(pred, dict):
+                        category = pred.get('category', 'Unknown')
+                        improvement = pred.get('predicted_improvement', 0.0)
+                    else:
+                        # Handle PredictionResult object
+                        category = getattr(pred, 'category', 'Unknown')
+                        if hasattr(category, 'value'):  # If category is an enum
+                            category = category.value
+                        improvement = getattr(pred, 'predicted_improvement', 0.0)
+                    
+                    summary_content += f"- {category.replace('_', ' ').title()}: {improvement:.1f}% improvement\n"
+                
+                summary_content += "\n---\n\n"
+                
+            except Exception as e:
+                print(f"Error analyzing process '{process_name}': {str(e)}")
+                summary_content += f"## {process_name}\n"
+                summary_content += f"Error during analysis: {str(e)}\n\n---\n\n"
+        
+        # Save summary report
+        summary_path = "reports/analysis_summary.md"
+        with open(summary_path, "w", encoding='utf-8') as f:
+            f.write(summary_content)
+        
+        print(f"\nAnalysis complete!")
+        print(f"Individual process reports saved in: {reports_dir}")
+        print(f"Summary report saved as: {summary_path}")
         
     except Exception as e:
         print(f"Error: {str(e)}")
