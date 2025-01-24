@@ -2,18 +2,71 @@ from typing import Dict, List, Tuple
 from src.backend.kpi.types import KPICategory, ProcessAnalysis
 from src.backend.model.math_analysis import AnalysisInput, ProcessActions, HumanResources, Frequency, ErrorMetrics, ImpactAssessment, Automation
 import pandas as pd
+from .database.survey_db import SurveyDatabase
+from .database.company_db import CompanyDatabase
 
 class SurveyProcessor:
     """Processes survey data and prepares it for KPI and mathematical analysis"""
     
-    def __init__(self, survey_path: str):
-        """Initialize with path to survey CSV"""
-        self.survey_data = pd.read_csv(survey_path)
+    def __init__(self, company_id: str):
+        """
+        Initialize with company ID
         
-        # Default law firm context
+        Args:
+            company_id: UUID of the company in database
+        """
+        self.survey_db = SurveyDatabase()
+        self.company_db = CompanyDatabase()
+        self.company_id = company_id
+        
+    async def load_data(self):
+        """Load survey and company data"""
+        self.survey_data = await self.survey_db.get_survey_data(self.company_id)
+        if self.survey_data is None or self.survey_data.empty:
+            print(f"Warning: No survey data found for company {self.company_id}")
+            # Create a sample survey data for testing
+            self.survey_data = pd.DataFrame([{
+                'respondent_role': 'Test User',
+                'experience_with_process': '1 year',
+                'department': 'Test Department',
+                'process_name': 'Sample Process',
+                'process_description': 'Step 1, Step 2, Step 3',
+                'total_time_minutes': 60,
+                'people_involved': 1,
+                'daily_frequency': 5,
+                'error_rate_percentage': 5,
+                'error_impact_rating': 5,
+                'business_importance': 7,
+                'automation_potential': 70,
+                'main_challenges': ['Challenge 1', 'Challenge 2'],
+                'current_systems_used': ['System 1', 'System 2']
+            }])
+            
+        await self._load_company_context()
+        
+    async def _load_company_context(self):
+        """Load company context from database"""
+        company_data = await self.company_db.get_company_data(self.company_id)
+        if company_data:
+            self.company_context = {
+                "industry": company_data.get("company_industry", "Unknown"),
+                "company_size": company_data.get("company_size", "Unknown"),
+                "company_name": company_data.get("company_name", "Unknown"),
+                "company_location": company_data.get("company_location", "Unknown"),
+                "company_description": company_data.get("company_description", "Unknown"),
+                "current_tech_stack": company_data.get("tech_stack", "Basic"),
+                "automation_experience": company_data.get("automation_experience", "Limited"),
+                "regulatory_requirements": company_data.get("regulatory_requirements", "Medium"),
+                "annual_case_volume": company_data.get("annual_case_volume", "Unknown"),
+                "primary_practice_areas": company_data.get("practice_areas", []),
+                "client_base": company_data.get("client_base", "Mixed")
+            }
+            return
+                
+        # Fallback to default context if no company_id or data not found
         self.company_context = {
             "industry": "Legal Services",
-            "company_size": "Medium", 
+            "company_size": "Medium",
             "current_tech_stack": "Document Management, CRM, E-filing",
             "automation_experience": "Limited",
             "regulatory_requirements": "High",

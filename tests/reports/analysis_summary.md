@@ -1,115 +1,125 @@
 # Process Analysis Summary Report
 
-Generated on: 2025-01-22 17:04:53
+Generated on: 2025-01-24 15:42:29
+
+Company: Metropolitan Commercial Realty
+Industry: Real Estate
+Size: 20
 
 Total Processes Analyzed: 10
 
-## New Client Intake and Conflict Check
-- Automation Potential: 0.80
-- AI Applicability: 0.85
-- Process Complexity: 0.65
-### Key Predictions:
-- Time Reduction: 0.6% improvement
-- Cost Savings: 17.5% improvement
-- Error Reduction: -0.4% improvement
-
----
-
-## Legal Document Review
-- Automation Potential: 0.80
-- AI Applicability: 0.60
-- Process Complexity: 0.30
-### Key Predictions:
-- Time Reduction: 24.0% improvement
-- Cost Savings: 17.5% improvement
-- Error Reduction: 0.0% improvement
-
----
-
-## Court Filing Management
+## Tenant Screening
 - Automation Potential: 0.75
 - AI Applicability: 0.80
 - Process Complexity: 0.45
 ### Key Predictions:
-- Time Reduction: 0.7% improvement
-- Cost Savings: 40.0% improvement
-- Error Reduction: 0.0% improvement
+- Time Reduction: 30.0% improvement
+- Cost Savings: 15.0% improvement
+- Error Reduction: 0.8% improvement
 
 ---
 
-## Legal Tech Systems Management
-- Automation Potential: 0.75
+## Property Listing Management
+Error during analysis: 4 validation errors for ProcessActions
+duration_per_step.0
+  Input should be a valid integer, got a number with a fractional part [type=int_from_float, input_value=22.5, input_type=float]
+    For further information visit https://errors.pydantic.dev/2.10/v/int_from_float
+duration_per_step.1
+  Input should be a valid integer, got a number with a fractional part [type=int_from_float, input_value=22.5, input_type=float]
+    For further information visit https://errors.pydantic.dev/2.10/v/int_from_float
+duration_per_step.2
+  Input should be a valid integer, got a number with a fractional part [type=int_from_float, input_value=22.5, input_type=float]
+    For further information visit https://errors.pydantic.dev/2.10/v/int_from_float
+duration_per_step.3
+  Input should be a valid integer, got a number with a fractional part [type=int_from_float, input_value=22.5, input_type=float]
+    For further information visit https://errors.pydantic.dev/2.10/v/int_from_float
+
+---
+
+## Contract Processing
+- Automation Potential: 0.70
 - AI Applicability: 0.80
 - Process Complexity: 0.45
 ### Key Predictions:
-- Time Reduction: 18.2% improvement
-- Cost Savings: 0.3% improvement
-- Error Reduction: 0.0% improvement
-
----
-
-## Document Management
-- Automation Potential: 0.80
-- AI Applicability: 0.75
-- Process Complexity: 0.60
-### Key Predictions:
-- Time Reduction: 0.4% improvement
-- Cost Savings: 13.8% improvement
-- Error Reduction: 0.0% improvement
-
----
-
-## Billing and Time Tracking
-- Automation Potential: 0.75
-- AI Applicability: 0.80
-- Process Complexity: 0.45
-### Key Predictions:
-- Time Reduction: 0.4% improvement
+- Time Reduction: 30.0% improvement
 - Cost Savings: 7.5% improvement
 - Error Reduction: 0.0% improvement
 
 ---
 
-## Workflow Optimization
-- Automation Potential: 0.75
-- AI Applicability: 0.80
-- Process Complexity: 0.45
-### Key Predictions:
-- Time Reduction: 0.0% improvement
-- Cost Savings: 17.5% improvement
-- Error Reduction: 0.0% improvement
-
----
-
-## Legal Research Process
-- Automation Potential: 0.75
-- AI Applicability: 0.80
-- Process Complexity: 0.60
-### Key Predictions:
-- Time Reduction: 31.9% improvement
-- Cost Savings: 15.0% improvement
-- Error Reduction: 0.0% improvement
-
----
-
-## Staff Training Management
+## Property Marketing Campaign
 - Automation Potential: 0.75
 - AI Applicability: 0.80
 - Process Complexity: 0.45
 ### Key Predictions:
 - Time Reduction: 0.3% improvement
-- Cost Savings: 40.0% improvement
+- Cost Savings: 10.0% improvement
+- Error Reduction: 0.3% improvement
+
+---
+
+## Rent Collection Processing
+- Automation Potential: 0.75
+- AI Applicability: 0.80
+- Process Complexity: 0.45
+### Key Predictions:
+- Time Reduction: 0.3% improvement
+- Cost Savings: 60.0% improvement
 - Error Reduction: 0.0% improvement
 
 ---
 
-## Risk Assessment
-- Automation Potential: 0.80
-- AI Applicability: 0.90
-- Process Complexity: 0.60
+## Maintenance Request Handling
+- Automation Potential: 0.75
+- AI Applicability: 0.80
+- Process Complexity: 0.45
 ### Key Predictions:
-- Time Reduction: 25.0% improvement
-- Cost Savings: 15.0% improvement
+- Time Reduction: 31.9% improvement
+- Cost Savings: 0.7% improvement
+- Error Reduction: 0.7% improvement
+
+---
+
+## Property Showing Scheduling
+- Automation Potential: 0.75
+- AI Applicability: 0.80
+- Process Complexity: 0.45
+### Key Predictions:
+- Time Reduction: 27.3% improvement
+- Cost Savings: 40.0% improvement
+- Error Reduction: 0.1% improvement
+
+---
+
+## Property Compliance Verification
+- Automation Potential: 0.75
+- AI Applicability: 0.80
+- Process Complexity: 0.45
+### Key Predictions:
+- Time Reduction: 31.9% improvement
+- Cost Savings: 7.5% improvement
+- Error Reduction: 0.0% improvement
+
+---
+
+## Client Portfolio Management
+- Automation Potential: 0.75
+- AI Applicability: 0.80
+- Process Complexity: 0.45
+### Key Predictions:
+- Time Reduction: 27.3% improvement
+- Cost Savings: 6.2% improvement
+- Error Reduction: 0.6% improvement
+
+---
+
+## Document Processing
+- Automation Potential: 0.75
+- AI Applicability: 0.80
+- Process Complexity: 0.45
+### Key Predictions:
+- Time Reduction: 20.0% improvement
+- Cost Savings: 10.0% improvement
 - Error Reduction: 0.0% improvement
 
 ---

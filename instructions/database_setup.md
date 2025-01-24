@@ -23,7 +23,7 @@ Let's going to create a database where we are going to store the survey data and
     - company_phone: string
 
 
-### Analysis Results
+### Analysis Results - DONE
 - We are going to store the analysis results in an md file.
 - The results are going to be stored in the 'Desktop' folder of the user.
 - A nice idea would be to pass the md file for a latex compiler to generate a pdf. And directly save the pdf in the 'Desktop' folder of the user.

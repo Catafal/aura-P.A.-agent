@@ -16,8 +16,9 @@ from src.backend.kpi.types import KPICategory
 from src.backend.kpi.data_generator import KPIDataGenerator
 from src.backend.model.prompt_templates import MathAnalysisPrompts
 from src.backend.report_converter import process_reports
+from src.backend.survey_handler import SurveyProcessor
 
-async def extract_process_data_from_survey(survey_data: pd.DataFrame, process_name: str) -> Dict[str, Any]:
+async def extract_process_data_from_survey(survey_data: pd.DataFrame, process_name: str, company_data: Dict[str, Any]) -> Dict[str, Any]:
     """Use LLM to extract and structure process data from survey responses"""
     process_row = survey_data[survey_data['process_name'] == process_name].iloc[0]
     
@@ -34,8 +35,14 @@ Rules:
    - feasibility_rating must be an integer (1-100)
    - potential_savings must be a float (0.0-1.0)
 
-Here is the survey data to convert:
+Company Context:
+Name: {company_name}
+Industry: {industry}
+Size: {size}
+Location: {location}
+Description: {description}
 
+Process Data:
 Process: {name}
 Description: {desc}
 Time: {time} minutes
@@ -57,7 +64,7 @@ Return this EXACT dictionary structure with the survey data (no other text):
     "frequency": {{"daily_repetitions": 5, "peak_hours": [9, 10, 11]}},
     "error_metrics": {{"error_rate": 0.08, "error_impact": 8, "error_types": ["Type 1"]}},
     "impact_assessment": {{"importance_rating": 9, "affected_departments": ["Dept 1"]}},
-    "automation": {{"feasibility_rating": 65, "potential_savings": 0.6}}  # feasibility_rating must be integer 1-100
+    "automation": {{"feasibility_rating": 65, "potential_savings": 0.6}}
  }},
  "process_context": {{
     "description": "Process description",
@@ -65,8 +72,11 @@ Return this EXACT dictionary structure with the survey data (no other text):
     "challenges": ["Challenge 1"]
  }},
  "company_context": {{
-    "industry": "Industry name",
-    "company_size": "Size",
+    "industry": "{industry}",
+    "company_size": "{size}",
+    "company_name": "{company_name}",
+    "company_location": "{location}",
+    "company_description": "{description}",
     "regulatory_requirements": ["Req 1"],
     "business_priorities": {{"efficiency": 8, "quality": 9, "compliance": 10}}
  }}}}""".format(
@@ -80,7 +90,12 @@ Return this EXACT dictionary structure with the survey data (no other text):
         bus_imp=process_row['business_importance'],
         auto_pot=process_row['automation_potential'],
         challenges=process_row['main_challenges'],
-        systems=process_row['current_systems_used']
+        systems=process_row['current_systems_used'],
+        company_name=company_data.get('company_name', 'Unknown'),
+        industry=company_data.get('company_industry', 'Unknown'),
+        size=company_data.get('company_size', 'Unknown'),
+        location=company_data.get('company_location', 'Unknown'),
+        description=company_data.get('company_description', 'Unknown')
     )
 
     # Use Ollama with phi4 model
@@ -141,11 +156,11 @@ Return this EXACT dictionary structure with the survey data (no other text):
     structured_data['metrics'] = metrics
     return structured_data
 
-async def run_math_analysis_test(survey_data: pd.DataFrame, process_name: str, verify_with_local: bool = False):
+async def run_math_analysis_test(survey_data: pd.DataFrame, process_name: str, company_context: Dict = None, verify_with_local: bool = False):
     """Run the mathematical analysis test using survey data"""
     
     # Extract structured data from survey
-    process_data = await extract_process_data_from_survey(survey_data, process_name)
+    process_data = await extract_process_data_from_survey(survey_data, process_name, company_context or {})
     
     test_data = AnalysisInput(
         metrics=process_data['metrics'],
@@ -176,7 +191,7 @@ async def run_math_analysis_test(survey_data: pd.DataFrame, process_name: str, v
         "primary_analysis": primary_analysis
     }
 
-async def run_example_test(survey_data: pd.DataFrame, process_name: str):
+async def run_example_test(survey_data: pd.DataFrame, process_name: str, company_context: Dict = None):
     """Run the example test using survey data"""
     if not os.path.exists("/Volumes/970Evo Plus/GitHub/aura-P.A.-agent/tests/data/synthetic_kpi_data.csv"):
         data_generator = KPIDataGenerator()
@@ -186,7 +201,7 @@ async def run_example_test(survey_data: pd.DataFrame, process_name: str):
     predictor = KPIPredictor()
     
     # Extract process data from survey
-    process_data = await extract_process_data_from_survey(survey_data, process_name)
+    process_data = await extract_process_data_from_survey(survey_data, process_name, company_context or {})
     
     try:
         analysis = await predictor.analyze_process(
@@ -359,8 +374,14 @@ Process name: {math_results.get('process_data', {}).get('process_steps', ['Unkno
 
 async def main():
     try:
-        # Load survey data
-        survey_data = pd.read_csv("/Volumes/970Evo Plus/GitHub/aura-P.A.-agent/tests/data/law-firm-survey.csv")
+        # Initialize with company ID
+        company_id = "027a543c-79c7-4475-b932-6bc2a026d75c"  # Get this from your application context
+        processor = SurveyProcessor(company_id)
+        
+        # Load data
+        await processor.load_data()
+        survey_data = processor.survey_data
+        company_context = processor.company_context
         
         print("\nAnalyzing all processes from survey...")
         
@@ -374,6 +395,9 @@ async def main():
         # Create a summary report
         summary_content = "# Process Analysis Summary Report\n\n"
         summary_content += f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        summary_content += f"Company: {company_context['company_name']}\n"
+        summary_content += f"Industry: {company_context['industry']}\n"
+        summary_content += f"Size: {company_context['company_size']}\n\n"
         summary_content += f"Total Processes Analyzed: {len(process_names)}\n\n"
         
         # Analyze each process
@@ -382,10 +406,10 @@ async def main():
             
             try:
                 print("Running Mathematical Analysis Test...")
-                math_results = await run_math_analysis_test(survey_data, process_name, verify_with_local=True)
+                math_results = await run_math_analysis_test(survey_data, process_name, company_context, verify_with_local=True)
                 
                 print("Running Example Test...")
-                example_results = await run_example_test(survey_data, process_name)
+                example_results = await run_example_test(survey_data, process_name, company_context)
                 
                 print("Generating Process Report...")
                 # Save individual process report
