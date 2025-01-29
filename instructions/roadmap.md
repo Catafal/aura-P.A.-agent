@@ -1,1 +1,1 @@
-- add a RAG to access information about the company just in case it's local calculus
+- put the program into a docker container and run it from there

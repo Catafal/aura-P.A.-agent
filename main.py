@@ -501,8 +501,8 @@ async def main():
         print(f"Summary report saved as: {summary_path}")
         
         # convert the md files to latex
-        print("\nConverting reports to LaTeX and PDF...")
-        await process_reports(reports_dir)
+        await process_reports()
+        
         
     except Exception as e:
         print(f"Error: {str(e)}")

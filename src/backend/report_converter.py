@@ -10,10 +10,10 @@ import platform
 class ReportConverter:
     """Converts markdown reports to LaTeX and PDF formats"""
     
-    def __init__(self):
-        """Initialize the converter with Ollama LLM"""
+    def __init__(self, output_dir: Optional[str] = None):
+        """Initialize the converter with Ollama LLM and output directory"""
         self.llm = OllamaLLM(model="phi4:latest")
-        self.desktop_path = self._get_desktop_path()
+        self.output_dir = Path(output_dir) if output_dir else self._get_desktop_path() / "process_analysis_reports"
         
     def _get_desktop_path(self) -> Path:
         """Get the user's desktop path based on OS"""
@@ -90,15 +90,6 @@ Output the complete LaTeX document with ALL content preserved."""
 {md_content}
 \\end{{document}}"""
     
-    def _create_output_structure(self, source_dir: Path) -> Path:
-        """Create output directory structure on desktop"""
-        reports_dir = self.desktop_path / "process_analysis_reports"
-        if source_dir.name != "reports":
-            reports_dir = reports_dir / source_dir.relative_to(source_dir.parent.parent / "reports")
-        
-        reports_dir.mkdir(parents=True, exist_ok=True)
-        return reports_dir
-    
     def _compile_latex_to_pdf(self, latex_content: str, output_path: Path) -> bool:
         """Compile LaTeX content to PDF using pdflatex"""
         try:
@@ -139,23 +130,15 @@ Output the complete LaTeX document with ALL content preserved."""
             print(f"Converting {md_path.name} to LaTeX...")
             latex_content = await self.convert_md_to_latex(md_content)
             
-            # Create output directory structure
-            output_dir = self._create_output_structure(md_path.parent)
-            output_path = output_dir / md_path.name
-            
-            # Copy original markdown file
-            shutil.copy2(md_path, output_path)
-            print(f"Markdown file copied: {output_path}")
-            
-            # Save LaTeX file
-            latex_path = output_path.with_suffix('.tex')
+            # Save LaTeX file in the same directory as the markdown file
+            latex_path = md_path.with_suffix('.tex')
             latex_path.write_text(latex_content, encoding='utf-8')
             print(f"LaTeX file saved: {latex_path}")
             
             # Compile to PDF
             print(f"Compiling {latex_path.name} to PDF...")
-            if self._compile_latex_to_pdf(latex_content, output_path):
-                print(f"PDF created: {output_path.with_suffix('.pdf')}")
+            if self._compile_latex_to_pdf(latex_content, md_path):
+                print(f"PDF created: {md_path.with_suffix('.pdf')}")
                 return True
             else:
                 print(f"Failed to create PDF for {md_path.name}")
@@ -167,17 +150,14 @@ Output the complete LaTeX document with ALL content preserved."""
     
     async def convert_reports(self, reports_dir: Optional[str] = None):
         """Convert all markdown reports in directory to LaTeX and PDF"""
-        if reports_dir is None:
-            reports_dir = "reports"
-            
-        reports_path = Path(reports_dir)
+        reports_path = Path(reports_dir) if reports_dir else self.output_dir
         if not reports_path.exists():
-            raise FileNotFoundError(f"Reports directory not found: {reports_dir}")
+            raise FileNotFoundError(f"Reports directory not found: {reports_path}")
         
         # Find all markdown files
         md_files = list(reports_path.rglob("*.md"))
         if not md_files:
-            print(f"No markdown files found in {reports_dir}")
+            print(f"No markdown files found in {reports_path}")
             return
         
         print(f"Found {len(md_files)} markdown files to process")
@@ -190,36 +170,12 @@ Output the complete LaTeX document with ALL content preserved."""
         successful = sum(1 for r in results if r)
         print(f"\nConversion complete!")
         print(f"Successfully converted: {successful}/{len(md_files)} files")
-        print(f"Reports saved to: {self.desktop_path}/process_analysis_reports")
+        print(f"Reports saved in: {reports_path}")
 
-def find_reports(base_dir="/Volumes/970Evo Plus/GitHub/aura-P.A.-agent/tests/reports"):
-    """
-    Find all markdown report files in the specified directory and its subdirectories.
-    
-    Args:
-        base_dir (str): Base directory to search for reports (default: tests/reports)
-        
-    Returns:
-        list: List of paths to markdown report files
-    """
-    report_files = []
-    for root, _, files in os.walk(base_dir):
-        for file in files:
-            if file.endswith('.md'):
-                report_files.append(os.path.join(root, file))
-    return report_files
-
-async def process_reports():
+async def process_reports(output_dir: Optional[str] = None):
     """Process all report files and convert them to the desired format."""
-    # Find all report files
-    report_files = find_reports()
-    
-    converter = ReportConverter()
-    for report_path in report_files:
-        try:
-            await converter.process_markdown_file(Path(report_path))
-        except Exception as e:
-            print(f"Error processing {report_path}: {str(e)}")
+    converter = ReportConverter(output_dir)
+    await converter.convert_reports(output_dir)
 
 async def main():
     """Main function to run the converter"""

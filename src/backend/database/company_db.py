@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 import os
 from supabase import create_client
 from dotenv import load_dotenv
@@ -50,4 +50,18 @@ class CompanyDatabase:
             
         except Exception as e:
             print(f"Error retrieving company data: {str(e)}")
-            return None 
+            return None
+
+    async def get_all_companies(self) -> List[Dict]:
+        """
+        Retrieve all companies from the database
+        
+        Returns:
+            List[Dict]: List of company data dictionaries containing id and name
+        """
+        try:
+            response = self.client.table('companies').select("id,company_name").execute()
+            return response.data if response.data else []
+        except Exception as e:
+            print(f"Error retrieving companies: {str(e)}")
+            return [] 
