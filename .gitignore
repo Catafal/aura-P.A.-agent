@@ -129,3 +129,5 @@ cython_debug/
 
 # Google Sheets credentials
 pa-agent-key.json
+
+Dockerfile

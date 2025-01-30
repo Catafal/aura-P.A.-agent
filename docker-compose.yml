@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  aura-pa-agent:
+    build: .
+    volumes:
+      - ./src/backend/database/pa-agent-key.json:/app/credentials/pa-agent-key.json:ro
+    env_file:
+      - .env
+    environment:
+      - GOOGLE_SHEETS_CREDENTIALS_PATH=/app/credentials/pa-agent-key.json
+    # For development, you might want to see the output in real-time
+    tty: true 

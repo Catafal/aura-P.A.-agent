@@ -1,0 +1,14 @@
+pandas
+langchain-ollama
+python-dotenv
+asyncio
+langchain
+google-cloud-firestore
+numpy
+matplotlib
+scikit-learn
+pytest
+langchain-groq
+supabase
+gspread
+oauth2client

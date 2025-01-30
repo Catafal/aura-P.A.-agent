@@ -4,10 +4,7 @@ import os
 from dotenv import load_dotenv
 from langchain_ollama import OllamaLLM
 from langchain_groq import ChatGroq
-from transformers import pipeline
-from langchain_huggingface import HuggingFacePipeline
 from langchain.schema import HumanMessage, SystemMessage
-from transformers import AutoModelForCausalLM, AutoTokenizer
 from .data_anonymizer import DataAnonymizer
 
 class ProcessActions(BaseModel):
