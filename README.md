@@ -12,6 +12,22 @@ The **Aura P.A. Agent** (Process Analysis Agent) is an intelligent business proc
 - **Survey Data Processing**: Transforms business process surveys into actionable insights
 - **Comprehensive Reporting**: Generates detailed analysis reports with LaTeX formatting
 
+## Quick Start
+
+```bash
+# 1. Clone and setup
+git clone https://github.com/Catafal/aura-P.A.-agent.git
+cd aura-P.A.-agent
+pip install -r requirements.txt
+
+# 2. Try the basic example (no LLM required)
+python examples/basic_usage_example.py
+
+# 3. For full analysis, install Ollama and run
+ollama pull phi4:latest
+python main.py
+```
+
 ## Features
 
 ### 🔍 **Process Research & Analysis**
@@ -197,6 +213,8 @@ aura-P.A.-agent/
 │       │   └── survey_db.py          # Survey data handling
 │       ├── survey_handler.py   # Survey data processing
 │       └── report_converter.py # Report generation utilities
+├── examples/                   # Usage examples and demonstrations
+│   └── basic_usage_example.py  # Basic functionality demo
 ├── tests/                      # Test files and sample data
 ├── reports/                    # Generated analysis reports
 └── instructions/               # Project documentation
@@ -265,13 +283,16 @@ process_name,process_description,total_time_minutes,people_involved,daily_freque
 3. Integrate with existing accounting systems
 ```
 
+### Basic Example (No LLM Required)
+```bash
+# Run basic demonstration without Ollama setup
+python examples/basic_usage_example.py
+```
+
 ### Command Line Usage
 ```bash
-# Run analysis for specific company
-python main.py --company-id 123
-
-# Generate reports only
-python main.py --reports-only
+# Run full analysis (requires Ollama setup)
+python main.py
 
 # Use specific model
 OLLAMA_MODEL=qwen2.5-math:7b python main.py
