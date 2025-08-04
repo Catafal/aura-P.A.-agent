@@ -55,4 +55,4 @@ Here are some examples of how to use the Aura P.A. Agent:
 We welcome contributions! Please fork the repository and submit a pull request with your changes.
 
 ## License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+PyMuPDF is available under [open-source AGPL](https://www.gnu.org/licenses/agpl-3.0.html) and commercial license agreements. If you determine you cannot meet the requirements of the AGPL, please contact [AuraSystems](jordi@aurasyst.com) for more information regarding a commercial license.
